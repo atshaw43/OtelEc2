@@ -1,0 +1,67 @@
+plugins {
+    id 'java'
+    id 'application'
+    id 'org.openjfx.javafxplugin' version '0.0.10'
+    id 'org.beryx.jlink' version '2.24.1'
+}
+
+group 'com.example'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+ext {
+    junitVersion = '5.9.2'
+}
+
+sourceCompatibility = '11'
+targetCompatibility = '11'
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}
+
+application {
+    mainModule = 'com.example.demo'
+    mainClass = 'com.example.demo.HelloApplication'
+}
+
+javafx {
+    version = '11.0.2'
+    modules = ['javafx.controls', 'javafx.fxml']
+}
+
+dependencies {
+    implementation("com.amazonaws:aws-lambda-java-events:3.11.2")
+    implementation("software.amazon.awssdk:apache-client:2.20.111")
+    implementation("software.amazon.awssdk:apache-client:2.20.111")
+    implementation("io.opentelemetry:opentelemetry-sdk:1.28.0")
+    implementation("io.opentelemetry.contrib:opentelemetry-aws-xray:1.27.0")
+    implementation("io.opentelemetry.contrib:opentelemetry-aws-xray-propagator:1.26.0-alpha")
+    implementation("io.opentelemetry:opentelemetry-exporter-otlp:1.26.0")
+    implementation("io.opentelemetry:opentelemetry-exporter-otlp-logs:1.26.0-alpha")
+    implementation('software.amazon.awssdk:sqs:2.20.67')
+    implementation("io.opentelemetry.instrumentation:opentelemetry-aws-sdk-2.2:1.27.0-alpha-SNAPSHOT")
+    implementation("io.opentelemetry.instrumentation:opentelemetry-message-handler-1.0:1.27.0-alpha-SNAPSHOT")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:${junitVersion}")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:${junitVersion}")
+}
+
+test {
+    useJUnitPlatform()
+}
+
+jlink {
+    imageZip = project.file("${buildDir}/distributions/app-${javafx.platform.classifier}.zip")
+    options = ['--strip-debug', '--compress', '2', '--no-header-files', '--no-man-pages']
+    launcher {
+        name = 'app'
+    }
+}
+
+jlinkZip {
+    group = 'distribution'
+}
