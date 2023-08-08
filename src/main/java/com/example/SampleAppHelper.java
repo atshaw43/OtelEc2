@@ -1,4 +1,4 @@
-package com.example.demo;
+package com.example;
 
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.common.Attributes;
@@ -47,7 +47,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.opentelemetry.semconv.resource.attributes.ResourceAttributes.SERVICE_NAME;
 
-public class TestBase {
+public class SampleAppHelper {
     static final String url = "https://sqs.us-west-1.amazonaws.com/103216442713/MyQueue";
 
     static Resource resource = Resource.getDefault().merge(Resource.create(Attributes.of(SERVICE_NAME, "MyServiceName")));
@@ -100,7 +100,7 @@ public class TestBase {
                         .build());
 
         sqs = SqsClient.builder()
-                //.overrideConfiguration(c -> c.addExecutionInterceptor(AwsSdkTelemetry.builder(openTelemetry).build().newExecutionInterceptor()))
+                //.overrideConfiguration(c -> c.addExecutionInterceptor(AwsSdkTelemetry.builder(openTelemetry).build().newExecutionInterceptor())) // Uncomment this line for auto-instrumentation
                 .region(Region.US_EAST_1)
                 .httpClient(httpClient)
                 .build();

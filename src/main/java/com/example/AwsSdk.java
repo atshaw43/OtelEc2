@@ -1,4 +1,4 @@
-package com.example.demo;
+package com.example;
 
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.context.Scope;
@@ -6,18 +6,18 @@ import software.amazon.awssdk.services.sqs.model.Message;
 
 import java.util.Collection;
 
-public class AwsSdk extends TestBase {
+public class AwsSdk extends SampleAppHelper {
     public static void main(String[] args) throws Exception {
-        testNoMessages();
+        //testNoMessages();
         testSampled();
-        testUnsampled();
-        testTwoSampled();
-        testTwoUnsampled();
-        testTwoMixedSampled();
-        testRepeatedUeOfHandler();
-        testExceptionInHandler();
-        testSampledByAttribute();
-        testSampledAutoinstrumentation();
+        //testUnsampled();
+        //testTwoSampled();
+        //testTwoUnsampled();
+        //testTwoMixedSampled();
+        //testRepeatedUeOfHandler();
+        //testExceptionInHandler();
+        //testSampledByAttribute();
+        //testSampledAutoinstrumentation();
 
         Thread.sleep(5000);
     }

@@ -1,26 +1,21 @@
-package com.example.demo;
+package com.example;
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanBuilder;
-import io.opentelemetry.api.trace.SpanContext;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
 import software.amazon.awssdk.services.sqs.model.Message;
 import software.amazon.awssdk.services.sqs.model.MessageAttributeValue;
-import software.amazon.awssdk.services.sqs.model.MessageSystemAttributeNameForSends;
-import software.amazon.awssdk.services.sqs.model.MessageSystemAttributeValue;
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
 import java.util.Collection;
 import java.util.Collections;
 
-public class OneOff extends TestBase {
+public class OneOff extends SampleAppHelper {
     public static void main(String[] args) throws Exception {
         testInvalidTraceContextFormat();
         testSpanLinksAttributes();
