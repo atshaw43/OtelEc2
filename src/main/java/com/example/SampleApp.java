@@ -6,8 +6,9 @@ import io.opentelemetry.api.trace.Tracer;
 
 public class SampleApp extends SampleAppHelper {
     public static void main(String[] args) throws Exception {
-        Tracer tracer =
-                openTelemetry.getTracer("instrumentation-library-name", "1.0.0");
+        Tracer tracer = openTelemetry.getTracer(
+                "instrumentation-library-name",
+                "1.0.0");
 
         // Create our upstream span
         SpanBuilder upstreamSpanBuilder = tracer.spanBuilder("Upstream Span");
