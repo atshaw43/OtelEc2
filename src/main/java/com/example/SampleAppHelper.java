@@ -4,6 +4,7 @@ import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanBuilder;
+import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.propagation.ContextPropagators;
@@ -13,7 +14,7 @@ import io.opentelemetry.contrib.awsxray.propagator.AwsXrayPropagator;
 import io.opentelemetry.exporter.otlp.logs.OtlpGrpcLogRecordExporter;
 import io.opentelemetry.exporter.otlp.metrics.OtlpGrpcMetricExporter;
 import io.opentelemetry.exporter.otlp.trace.OtlpGrpcSpanExporter;
-import io.opentelemetry.instrumentation.awssdk.v2_2.SqsMessageHandler;
+import io.opentelemetry.instrumentation.awssdk.v2_2.AwsSdkTelemetry;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.logs.SdkLoggerProvider;
 import io.opentelemetry.sdk.logs.export.BatchLogRecordProcessor;
@@ -30,7 +31,6 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageRequest;
 import software.amazon.awssdk.services.sqs.model.Message;
-import software.amazon.awssdk.services.sqs.model.MessageAttributeValue;
 import software.amazon.awssdk.services.sqs.model.MessageSystemAttributeNameForSends;
 import software.amazon.awssdk.services.sqs.model.MessageSystemAttributeValue;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
@@ -43,7 +43,6 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.opentelemetry.semconv.resource.attributes.ResourceAttributes.SERVICE_NAME;
 
@@ -91,7 +90,9 @@ public class SampleAppHelper {
             .setPropagators(ContextPropagators.create(AwsXrayPropagator.getInstance()))
             .build();
 
-    static SqsClient sqs;
+    static SqsClient sqsAutoinstrumentation;
+
+    static Region region = Region.US_WEST_1;
 
     static {
         SdkHttpClient httpClient = ApacheHttpClient.builder()
@@ -99,9 +100,9 @@ public class SampleAppHelper {
                         .put(SdkHttpConfigurationOption.TRUST_ALL_CERTIFICATES, Boolean.TRUE)
                         .build());
 
-        sqs = SqsClient.builder()
-                //.overrideConfiguration(c -> c.addExecutionInterceptor(AwsSdkTelemetry.builder(openTelemetry).build().newExecutionInterceptor())) // Uncomment this line for auto-instrumentation
-                .region(Region.US_EAST_1)
+        sqsAutoinstrumentation = SqsClient.builder()
+                .overrideConfiguration(c -> c.addExecutionInterceptor(AwsSdkTelemetry.builder(openTelemetry).build().newExecutionInterceptor()))
+                .region(region)
                 .httpClient(httpClient)
                 .build();
     }
@@ -127,10 +128,11 @@ public class SampleAppHelper {
         }
     }
 
-    static SqsMessageHandlerImpl sqsMessageHandlerImpl = new SqsMessageHandlerImpl();
-    static SqsMessageHandlerImplException sqsMessageHandlerImplException = new SqsMessageHandlerImplException();
+   // static SqsMessageHandlerImpl sqsMessageHandlerImpl = new SqsMessageHandlerImpl();
+    //static SqsMessageHandlerImplException sqsMessageHandlerImplException = new SqsMessageHandlerImplException();
 
-    static class SqsMessageHandlerImpl extends SqsMessageHandler<Message> {
+    /*
+    static class SqsMessageHandlerImpl extends SqsMessageHandler {
         public final AtomicInteger handleCalls = new AtomicInteger();
         public SqsMessageHandlerImpl() {
             super(openTelemetry, "destination");
@@ -142,9 +144,10 @@ public class SampleAppHelper {
                 System.out.println("Processing: " + message.body());
             }
         }
-    }
+    }*/
 
-    static class SqsMessageHandlerImplException extends SqsMessageHandler<Message> {
+    /*
+    static class SqsMessageHandlerImplException extends SqsMessageHandler {
         public final AtomicInteger handleCalls = new AtomicInteger();
         public SqsMessageHandlerImplException() {
             super(openTelemetry, "destination");
@@ -156,7 +159,7 @@ public class SampleAppHelper {
             }
             throw new IllegalArgumentException("Test");
         }
-    }
+    }*/
 
     public static Span startSpanSampled(String name) {
         Tracer tracer =
@@ -170,10 +173,11 @@ public class SampleAppHelper {
                 openTelemetryNeverSample.getTracer("instrumentation-library-name", "1.0.0");
 
         SpanBuilder upstreamSpanBuilder = tracer.spanBuilder(name);
+        upstreamSpanBuilder.setSpanKind(SpanKind.SERVER);
         return upstreamSpanBuilder.startSpan();
     }
 
-    public static void sendMessage(String body) {
+    public static void sendMessage(String body, SqsClient sqsClient) {
         SendMessageRequest sendMessageRequest = SendMessageRequest.builder()
                 .queueUrl(url)
                 .messageBody(body)
@@ -184,54 +188,39 @@ public class SampleAppHelper {
 
         System.out.println("Sending: " + sendMessageRequest.messageBody());
 
-        sqs.sendMessage(sendMessageRequest);
+        sqsClient.sendMessage(sendMessageRequest);
     }
 
-    public static void sendMessageByAttribute(String body) {
+    public static void sendMessageAuto(String body, SqsClient sqsClient) {
         SendMessageRequest sendMessageRequest = SendMessageRequest.builder()
-                .queueUrl(url)
-                .messageBody(body)
-                .messageAttributes(
-                        Collections.singletonMap(
-                                "X-Amzn-Trace-Id",
-                                MessageAttributeValue.builder().dataType("String").stringValue(getSpanTraceHeader()).build())).build();
+            .queueUrl(url)
+            .messageBody(body).build();
 
         System.out.println("Sending: " + sendMessageRequest.messageBody());
 
-        sqs.sendMessage(sendMessageRequest);
+        sqsClient.sendMessage(sendMessageRequest);
     }
 
-
-
-    public static void sendMessageByAuto(String body) {
-        SendMessageRequest sendMessageRequest = SendMessageRequest.builder()
-                .queueUrl(url)
-                .messageBody(body).build();
-
-        System.out.println("Sending: " + sendMessageRequest.messageBody());
-
-        sqs.sendMessage(sendMessageRequest);
-    }
-
-    public static Collection<Message> receiveMessage(int expected) {
+    public static Collection<Message> receiveMessage(int expected, SqsClient sqsClient) {
         Collection<Message> messages = new LinkedList<>();
 
-        while(messages.size() < expected) {
+
+        do {
             ReceiveMessageRequest request = ReceiveMessageRequest.builder()
                     .maxNumberOfMessages(10)
                     .attributeNamesWithStrings(MessageSystemAttributeNameForSends.AWS_TRACE_HEADER.toString())
                     .messageAttributeNames("X-Amzn-Trace-Id")
                     .queueUrl(url).build();
 
-            ReceiveMessageResponse response = sqs.receiveMessage(request);
+            ReceiveMessageResponse response = sqsClient.receiveMessage(request);
 
             messages.addAll(response.messages());
-        }
+        } while (messages.size() < expected);
 
         return messages;
     }
 
-    public static void deleteMessages(Collection<Message> messages) {
+    public static void deleteMessages(Collection<Message> messages, SqsClient sqsClient) {
         for (Message message: messages) {
             System.out.println("Deleting: " + message.body());
 
@@ -241,7 +230,7 @@ public class SampleAppHelper {
                             .receiptHandle(message.receiptHandle())
                             .build();
 
-            sqs.deleteMessage(deleteMessageRequest);
+            sqsClient.deleteMessage(deleteMessageRequest);
         }
     }
 }
